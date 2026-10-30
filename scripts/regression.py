@@ -8,6 +8,15 @@ from pathlib import Path
 from lm_eval import tasks, utils
 
 
+def _safe_path(path, base=None):
+    resolved = os.path.realpath(os.path.abspath(path))
+    if base is not None:
+        base_resolved = os.path.realpath(os.path.abspath(base))
+        if os.path.commonpath([base_resolved, resolved]) != base_resolved:
+            raise ValueError(f"Path escapes allowed directory: {path!r}")
+    return resolved
+
+
 seq2seq_models = ["google/flan-t5-small"]
 causal_models = [
     "gpt2",
@@ -77,8 +86,15 @@ def eval_models(args, branch=None):
             if args.batch_size == "auto"
             else args.batch_size
         )
-        output_path = (
-            f"data/regression/{int(start_time)}-{branch}-{Path(model).name}.json"
+        output_dir = os.path.join("data", "regression")
+        os.makedirs(_safe_path(output_dir, base="data"), exist_ok=True)
+        safe_branch = str(branch).replace("/", "_").replace("\\", "_")
+        output_path = _safe_path(
+            os.path.join(
+                output_dir,
+                f"{int(start_time)}-{safe_branch}-{Path(model).name}.json",
+            ),
+            base=output_dir,
         )
 
         command = (
