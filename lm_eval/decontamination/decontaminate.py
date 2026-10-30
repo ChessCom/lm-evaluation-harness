@@ -10,6 +10,15 @@ from .janitor import Janitor, word_ngrams
 from .archiver import ZStdTextReader
 
 
+def _safe_path(path, base=None):
+    resolved = os.path.realpath(os.path.abspath(path))
+    if base is not None:
+        base_resolved = os.path.realpath(os.path.abspath(base))
+        if os.path.commonpath([base_resolved, resolved]) != base_resolved:
+            raise ValueError(f"Path escapes allowed directory: {path!r}")
+    return resolved
+
+
 # Was used for testing the evaluator decoupled from the full logic below
 def get_train_overlap_stub(docs, ngrams_path, ngrams_n_size):
     simulated_overlap = 0.1
@@ -36,7 +45,8 @@ def get_train_overlap_stub(docs, ngrams_path, ngrams_n_size):
 def get_train_overlap(docs_by_task_set, ngrams_path, limit):
     # return get_train_overlap_stub(docs, ngrams_path, ngrams_n_size)
 
-    info_dict_path = os.path.join(ngrams_path, "info.json")
+    ngrams_path = _safe_path(ngrams_path)
+    info_dict_path = _safe_path(os.path.join(ngrams_path, "info.json"), base=ngrams_path)
     info_dict = json.load(open(info_dict_path, "r"))
     ngrams_n_size = info_dict["ngram_size"]
 
@@ -47,15 +57,21 @@ def get_train_overlap(docs_by_task_set, ngrams_path, limit):
     start = time.perf_counter()
 
     def get_overlaps_dump_path(task_name, task_set, ngrams_n_size, limit):
-        return f"data/{task_name}/{task_set}_{ngrams_n_size}grams_limit{limit}.overlaps"
+        return _safe_path(
+            os.path.join(
+                "data",
+                task_name,
+                f"{task_set}_{ngrams_n_size}grams_limit{limit}.overlaps",
+            ),
+            base="data",
+        )
 
     lookups = {}
     duplicates = {}  # (task_name, task_set): set(doc_ids)}
     sets_to_decontaminate = len(docs_by_task_set.keys())
 
     for (task_name, task_set), docs in docs_by_task_set.items():
-        if not os.path.exists(f"data/{task_name}"):
-            os.mkdir(f"data/{task_name}")
+        os.makedirs(_safe_path(os.path.join("data", task_name), base="data"), exist_ok=True)
 
         # Check if we've decontaminated this combination before
         overlaps_dump_path = get_overlaps_dump_path(
@@ -71,8 +87,13 @@ def get_train_overlap(docs_by_task_set, ngrams_path, limit):
             duplicates[(task_name, task_set)] = set()
 
         # Build/load the task lookup {ngram: set(documents)}.
-        task_set_lookup_path = (
-            f"data/{task_name}/{task_set}_{ngrams_n_size}grams_limit{limit}.lookup"
+        task_set_lookup_path = _safe_path(
+            os.path.join(
+                "data",
+                task_name,
+                f"{task_set}_{ngrams_n_size}grams_limit{limit}.lookup",
+            ),
+            base="data",
         )
         if os.path.exists(task_set_lookup_path):
             print(f"{task_set_lookup_path} available, loading...")
