@@ -184,7 +184,10 @@ def get_train_overlap(docs_by_task_set, ngrams_path, limit):
             overlaps_dump_path = get_overlaps_dump_path(
                 task_name, task_set, ngrams_n_size, limit
             )
-            pickle.dump(doc_ids, open(overlaps_dump_path, "wb"))
+            pickle.dump(
+                doc_ids,
+                open(_safe_path(overlaps_dump_path, base="data"), "wb"),
+            )
 
     # Strip task set and return
     return {task_name: doc_ids for (task_name, task_set), doc_ids in duplicates.items()}
