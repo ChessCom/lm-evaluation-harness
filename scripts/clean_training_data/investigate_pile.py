@@ -8,6 +8,15 @@ import tqdm
 from tqdm_multiprocess import TqdmMultiProcessPool
 
 
+def _safe_path(path, base=None):
+    resolved = os.path.realpath(os.path.abspath(path))
+    if base is not None:
+        base_resolved = os.path.realpath(os.path.abspath(base))
+        if os.path.commonpath([base_resolved, resolved]) != base_resolved:
+            raise ValueError(f"Path escapes allowed directory: {path!r}")
+    return resolved
+
+
 def get_file_stats(file_path, tqdm_func, global_tqdm):
     reader = Reader()
     total_documents = 0
@@ -76,7 +85,7 @@ if __name__ == "__main__":
     version = 1.01
     print(f"Running version {version}")
 
-    stats_file_path = "pile_statistics.json"
+    stats_file_path = _safe_path("pile_statistics.json", base=".")
     if os.path.exists(stats_file_path):
         stats = json.load(open(stats_file_path, "r"))
     else:

@@ -43,6 +43,15 @@ logger = logging.getLogger(__name__)
 terminate = False
 
 
+def _safe_path(path, base=None):
+    resolved = os.path.realpath(os.path.abspath(path))
+    if base is not None:
+        base_resolved = os.path.realpath(os.path.abspath(base))
+        if os.path.commonpath([base_resolved, resolved]) != base_resolved:
+            raise ValueError(f"Path escapes allowed directory: {path!r}")
+    return resolved
+
+
 def handler(signal_received, frame):
     global terminate
     terminate = True
@@ -120,7 +129,7 @@ class Buckets:
 
 def do_ngrams_in_buckets(n_value, working_directory, bucket_count):
 
-    pile_statistics = json.load(open("pile_statistics.json", "r"))
+    pile_statistics = json.load(open(_safe_path("pile_statistics.json", base="."), "r"))
     pile_document_count = pile_statistics["Document Count"]
     start_offsets = pile_statistics["File Start Offsets"]
 
